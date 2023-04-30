@@ -19,12 +19,11 @@ from win32con import FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL
 from win32api import SetFileAttributes
 import logging
 import plyer
-import chime
+import winsound
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, filename="log.log", filemode='w',
                         format="[%(asctime)s | %(funcName)s] %(levelname)s - %(message)s")
-    chime.theme('material')
 
 class blockSubjectType(enum.Enum):
     app = 1
@@ -833,14 +832,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def showNotification(self) -> None:
         logging.warning('Showing time notification...')
         if config['PREFERENCES_TIME_NOTIF']['notif_sound']:
-            chime.success(False)
+            winsound.PlaySound('sound.wav', winsound.SND_ASYNC)
 
         if config['PREFERENCES_TIME_NOTIF']['open_app'] and self.isMinimized():
             self.showNormal()
 
         plyer.notification.notify(title="Focus notification",
                                   message=f"Focus time is at {config['PREFERENCES_TIME_NOTIF']['notif_time']}!",
-                                  app_name="SN_Straitjacket")
+                                  app_name="SN_Straitjacket",
+                                  app_icon="icon.ico")
         self.isNotificationPlayed = True
 
     def updateNotificationTime(self) -> None:
