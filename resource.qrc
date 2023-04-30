@@ -1,0 +1,18 @@
+<RCC>
+  <qresource prefix="Icons">
+    <file>Resources/creditsForApp.png</file>
+    <file>Resources/stopIcon.png</file>
+    <file>Resources/clearIcon.png</file>
+    <file>Resources/editIcon.png</file>
+    <file>Resources/minusIcon.png</file>
+    <file>Resources/plusIcon.png</file>
+    <file>Resources/startIcon.png</file>
+    <file>Resources/pauseIcon.png</file>
+    <file>Resources/setTimeIcon.png</file>
+    <file>Resources/appsIcon.png</file>
+    <file>Resources/creditsIcon.png</file>
+    <file>Resources/timerIcon.png</file>
+    <file>Resources/websitesIcon.png</file>
+    <file>Resources/settingsIcon.png</file>
+  </qresource>
+</RCC>
