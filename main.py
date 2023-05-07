@@ -21,9 +21,15 @@ import logging
 import plyer
 import winsound
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, filename="log.log", filemode='w',
-                        format="[%(asctime)s | %(funcName)s] %(levelname)s - %(message)s")
+# Implement plyer.platforms.win.notification as a hidden import
+
+## THIS IS NOT WORKING... ##
+#if __name__ == '__main__' and multiprocessing.parent_process() == None:
+#    print(multiprocessing.parent_process())
+#    logging.basicConfig(level=logging.INFO, filename="log.log", filemode='w',
+#                        format="[%(asctime)s | %(funcName)s] %(levelname)s - %(message)s")
+# Also all additional logging before freeze_support is commented, cuz it will ruin logging...
+## NEEDS A FIX ASAP!      ##
 
 class blockSubjectType(enum.Enum):
     app = 1
@@ -44,7 +50,7 @@ def util_writeConfigChanges():
     with open('config.toml', 'w') as configFile:
         tk.dump(config, configFile)
         SetFileAttributes('config.toml', FILE_ATTRIBUTE_HIDDEN)
-    logging.info("Config file updated")
+    #logging.info("Config file updated")
 
 def util_setupDefaultConfig():
     config = tk.document()
@@ -84,7 +90,7 @@ def util_setupDefaultConfig():
     with open('config.toml', 'w') as configFile:
         tk.dump(config, configFile)
         SetFileAttributes('config.toml', FILE_ATTRIBUTE_HIDDEN)
-    logging.warning("Config file not found! Initializing a default one!")
+    #logging.warning("Config file not found! Initializing a default one!")
 
 def util_strToBool(value) -> bool:
     if value.lower() == 'true':
@@ -129,7 +135,7 @@ def util_getTomlArrayAsList(value: tk.array):
 try:
     with open('config.toml', 'r') as configFile:
         config = tk.load(configFile)
-    logging.info("Existing config file loaded!")
+    #logging.info("Existing config file loaded!")
 except FileNotFoundError:
     util_setupDefaultConfig()
     with open('config.toml', 'r') as configFile:
@@ -142,30 +148,30 @@ except FileNotFoundError:
 #    def getTime(self) -> list:
 #        self.show()
 
-# Custom exception hook
-def snsj_exception_hook(exctype, value, traceback):
-    logging.critical("Exception catched! Displaying...")
-    logging.critical(f"{exctype}, {value}, {traceback}")
+# Custom exception hook (Also doesn't work cuz of freeze_support)
+#def snsj_exception_hook(exctype, value, traceback):
+#    logging.critical("Exception catched! Displaying...")
+#    logging.critical(f"{exctype}, {value}, {traceback}")
 
-sys.excepthook = snsj_exception_hook
+#sys.excepthook = snsj_exception_hook
 
 class multiprocessingBlocker():
     def __init__(self) -> None:
         self.blockList = list(config['BASE']['blocked_apps'])
         self.blockingProcces = multiprocessing.Process(target=self.blockApps, daemon=True)
-        logging.info("Multiprocessing blocker is initialized!")
+        #logging.info("Multiprocessing blocker is initialized!")
 
     def stopBlockingProcess(self)-> None:
         if self.blockingProcces.is_alive():
             self.blockingProcces.terminate()
-        logging.warning("Multiprocessing blocker is stopped!")
+        #logging.warning("Multiprocessing blocker is stopped!")
 
     def updateBlockingProcess(self)-> None:
         self.stopBlockingProcess()
         self.blockList = list(config['BASE']['blocked_apps'])
         self.blockingProcces = multiprocessing.Process(target=self.blockApps)
         self.blockingProcces.start()
-        logging.warning("Multiprocessing blocker is updated!")
+        #logging.warning("Multiprocessing blocker is updated!")
 
     def isBlockingContinuous(self) -> bool: # Check for 'is_continuous option'
         return bool(config['ADVANCED_UPDATE_METHOD']['is_continuous'])
@@ -184,6 +190,19 @@ class multiprocessingBlocker():
                     if proc.name() in self.blockList:
                         proc.kill()
                         continue
+
+multiprocessing.freeze_support() # Freeze multiprocessing for him to acctualy work properly
+
+# Custom exception hook
+def snsj_exception_hook(exctype, value, traceback):
+    logging.critical("Exception catched! Displaying...")
+    logging.critical(f"{exctype}, {value}, {traceback}")
+
+sys.excepthook = snsj_exception_hook
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, filename="log.log", filemode='w',
+                        format="[%(asctime)s | %(funcName)s] %(levelname)s - %(message)s")
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
@@ -838,9 +857,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.showNormal()
 
         plyer.notification.notify(title="Focus notification",
-                                  message=f"Focus time is at {config['PREFERENCES_TIME_NOTIF']['notif_time']}!",
-                                  app_name="SN_Straitjacket",
-                                  app_icon="icon.ico")
+                                message=f"Focus time is at {config['PREFERENCES_TIME_NOTIF']['notif_time']}!",
+                                app_name="SN_Straitjacket",
+                                app_icon="icon.ico")
         self.isNotificationPlayed = True
 
     def updateNotificationTime(self) -> None:
@@ -883,7 +902,6 @@ class MainWindow(QtWidgets.QMainWindow):
             logging.critical("App closed.")
 
 if __name__ == '__main__':
-    multiprocessing.freeze_support()
     app = QtWidgets.QApplication(sys.argv)
     MWindow = MainWindow()
     app.exec()
