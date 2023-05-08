@@ -11,4 +11,7 @@ All icons from [icons8](https://icons8.com/)
 Простая в использовании утилита для блокировки приложений и сайтов, чтобы фокусироваться только на важных вещах.
 Написанна на Python с использованием [PyQt5](https://pypi.org/project/PyQt5/), [tomlkit](https://pypi.org/project/tomlkit/), [psutil](https://pypi.org/project/psutil/), [pywin32](https://pypi.org/project/pywin32/) и [plyer](https://github.com/kivy/plyer)
 
+## Дорожная карта обновлений
+![изображение](https://user-images.githubusercontent.com/46260745/236793194-4f9e478d-81a0-4571-8fa7-6cb0d93a9ca2.png)
+
 Все иконки взяты с [icons8](https://icons8.com/)
