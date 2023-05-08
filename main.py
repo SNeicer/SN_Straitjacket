@@ -1,4 +1,4 @@
-# SN'Straitjacket (Version v1.0S) #
+# SN-Straitjacket (Version v1.0S) #
 # GitHub: https://github.com/SNeicer/SN_Straitjacket #
 # Discord: SNeicer#1342 #
 # EMail: b2jnz7hlw@mozmail.com #
@@ -803,7 +803,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             with open(osValues.hostsFile.value, 'r+') as hostsFile:
                 hosts_lines = hostsFile.read()
-                hostsFile.write('# Blocked websites from SN_Straitjacket\n')
+                hostsFile.write('   \n# Blocked websites from SN_Straitjacket\n')
                 for site in list(config['BASE']['blocked_websites']):
                     if site not in hosts_lines:
                         if config['PREFERENCES_WEBSITE_REDIR']['is_custom']:
@@ -833,7 +833,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 hosts_lines = hostsFile.readlines()
                 hostsFile.seek(0)
                 for line in hosts_lines:
-                    if not any(site in line for site in list(config['BASE']['blocked_websites'] + ['# Blocked websites from SN_Straitjacket\n'])):
+                    if not any(site in line for site in list(config['BASE']['blocked_websites'] + ['# Blocked websites from SN_Straitjacket\n'] + ['   \n'])):
                         hostsFile.write(line)
                 hostsFile.truncate()
                 logging.critical("Sites are unblocked!")
