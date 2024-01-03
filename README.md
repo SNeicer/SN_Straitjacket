@@ -1,6 +1,6 @@
 # SN_Straitjacket (ENG)
 Easy to use software to block apps and websites, for focusing only on important stuff.
-Written on Python with usage of [PyQt5](https://pypi.org/project/PyQt5/), [tomlkit](https://pypi.org/project/tomlkit/), [psutil](https://pypi.org/project/psutil/), [pywin32](https://pypi.org/project/pywin32/) and [plyer](https://github.com/kivy/plyer)
+Written in Python with usage of [PyQt5](https://pypi.org/project/PyQt5/), [tomlkit](https://pypi.org/project/tomlkit/), [psutil](https://pypi.org/project/psutil/), [pywin32](https://pypi.org/project/pywin32/) and [plyer](https://github.com/kivy/plyer)
 
 All icons from [icons8](https://icons8.com/)
 
