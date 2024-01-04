@@ -23,6 +23,8 @@ import winsound
 
 # Implement plyer.platforms.win.notification as a hidden import
 
+cur_app_version = 'release-v1.05' # Do not forget to update this one
+
 class blockSubjectType(enum.Enum):
     app = 1
     website = 2
@@ -190,8 +192,6 @@ def snsj_exception_hook(exctype, value, traceback):
     logging.critical(f"{exctype}, {value}, {traceback}")
 
 sys.excepthook = snsj_exception_hook
-
-cur_app_version = 'release-v1.05' # Do not forget to update this one
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, filename="log.log", filemode='w',
