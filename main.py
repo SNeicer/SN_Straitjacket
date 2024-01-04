@@ -23,14 +23,6 @@ import winsound
 
 # Implement plyer.platforms.win.notification as a hidden import
 
-## THIS IS NOT WORKING... ##
-#if __name__ == '__main__' and multiprocessing.parent_process() == None:
-#    print(multiprocessing.parent_process())
-#    logging.basicConfig(level=logging.INFO, filename="log.log", filemode='w',
-#                        format="[%(asctime)s | %(funcName)s] %(levelname)s - %(message)s")
-# Also all additional logging before freeze_support is commented, cuz it will ruin logging...
-## NEEDS A FIX ASAP!      ##
-
 class blockSubjectType(enum.Enum):
     app = 1
     website = 2
@@ -61,6 +53,8 @@ def util_setupDefaultConfig():
     cat_base.add('user_time', '01:00:00')
     cat_base.add('blocked_apps', [])
     cat_base.add('blocked_websites', [])
+    cat_base.add('app_version', cur_app_version)
+    cat_base.add('language', 'English')
 
     cat_time_notif = tk.table()
     cat_time_notif.add('time_notif', False)
@@ -91,6 +85,17 @@ def util_setupDefaultConfig():
         tk.dump(config, configFile)
         SetFileAttributes('config.toml', FILE_ATTRIBUTE_HIDDEN)
     #logging.warning("Config file not found! Initializing a default one!")
+
+def util_configCompatibilityCheck():
+    if not ('app_version' in config['BASE']):
+        config['BASE']['app_version'] = cur_app_version
+    elif config['BASE']['app_version'] != cur_app_version:
+        config['BASE']['app_version'] = cur_app_version
+
+    if not ('language' in config['BASE']):
+        config['BASE']['language'] = 'English'
+
+    util_writeConfigChanges()
 
 def util_strToBool(value) -> bool:
     if value.lower() == 'true':
@@ -141,20 +146,6 @@ except FileNotFoundError:
     with open('config.toml', 'r') as configFile:
         config = tk.load(configFile)
 
-#class dialog_timerSetup(QtWidgets.QDialog): # EXPEREMENTAL
-#    def __init__(self) -> None:
-#        uic.loadUi("Interfaces\\dialog_setupTimer.ui", self)
-#
-#    def getTime(self) -> list:
-#        self.show()
-
-# Custom exception hook (Also doesn't work cuz of freeze_support)
-#def snsj_exception_hook(exctype, value, traceback):
-#    logging.critical("Exception catched! Displaying...")
-#    logging.critical(f"{exctype}, {value}, {traceback}")
-
-#sys.excepthook = snsj_exception_hook
-
 class multiprocessingBlocker():
     def __init__(self) -> None:
         self.blockList = list(config['BASE']['blocked_apps'])
@@ -191,7 +182,7 @@ class multiprocessingBlocker():
                         proc.kill()
                         continue
 
-multiprocessing.freeze_support() # Freeze multiprocessing for him to acctualy work properly
+multiprocessing.freeze_support() # Freeze multiprocessing for blocker to prevent creating windows
 
 # Custom exception hook
 def snsj_exception_hook(exctype, value, traceback):
@@ -199,6 +190,8 @@ def snsj_exception_hook(exctype, value, traceback):
     logging.critical(f"{exctype}, {value}, {traceback}")
 
 sys.excepthook = snsj_exception_hook
+
+cur_app_version = 'release-v1.05' # Do not forget to update this one
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, filename="log.log", filemode='w',
@@ -220,6 +213,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.blockManager = multiprocessingBlocker()
         self.updateButtonIcons()
         self.isNotificationPlayed = False # For canceling multiple activations at once
+        util_configCompatibilityCheck()
 
         # Some cosmetic stuff for main window and info box
         windowIcon = QtGui.QIcon()
