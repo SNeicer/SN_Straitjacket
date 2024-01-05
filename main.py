@@ -11,6 +11,8 @@ import enum
 import resource_rc
 import tomlkit as tk
 import psutil
+import glob
+import yaml
 from time import sleep
 import multiprocessing
 import shutil
@@ -23,7 +25,7 @@ import winsound
 
 # Implement plyer.platforms.win.notification as a hidden import
 
-cur_app_version = 'release-v1.05' # Do not forget to update this one
+cur_app_version = 'release-v1.1' # Do not forget to update this one
 
 class blockSubjectType(enum.Enum):
     app = 1
@@ -201,6 +203,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super(MainWindow, self).__init__()
         uic.loadUi("Interfaces\\mainWindowIcons.ui", self)
+        util_configCompatibilityCheck()
+        self.loadLocalizationFile()
+        self.applyLocalizationToUi()
+        self.updateAvalibleLanguages()
         self.show()
         self.info_box = QtWidgets.QMessageBox()
         self.updateListButtonStates()
@@ -213,14 +219,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.blockManager = multiprocessingBlocker()
         self.updateButtonIcons()
         self.isNotificationPlayed = False # For canceling multiple activations at once
-        util_configCompatibilityCheck()
 
         # Some cosmetic stuff for main window and info box
         windowIcon = QtGui.QIcon()
         windowIcon.addFile(u":/Icons/Resources/setTimeIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(windowIcon)
         self.info_box.setWindowIcon(windowIcon)
-        self.setWindowTitle('SN_Straitjacket - Release v1.0S')
+        self.setWindowTitle(f'SN_Straitjacket - {cur_app_version}')
 
         # Setting up button connections
         self.btn_addApp.clicked.connect(lambda: self.addBlockedSubject(blockSubjectType.app))
@@ -268,10 +273,58 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cbox_playNotifSound.clicked.connect(self.updateGroupStates)
         self.cbox_openUiAfterNotif.clicked.connect(self.updateGroupStates)
 
+        # Language change
+        self.combox_language.currentIndexChanged.connect(self.onLocalizationChanged)
+
         # Logging
         logging.info("MainWindow initialized!")
 
     # Base functions
+
+    def loadLocalizationFile(self) -> None:
+        try:
+            logging.info("Loading localization from config...")
+            with open(f".\\Localization\\{config['BASE']['language']}.yml", "r", encoding='utf-8') as loc_file:
+                self.loc_file = yaml.safe_load(loc_file)
+            logging.info("Localization loaded!")
+        except FileNotFoundError:
+            logging.critical("Localization file not found! Loading English.toml instead!")
+            config['BASE']['language'] = "English"
+            util_writeConfigChanges()
+            with open(f".\\Localization\\English.yml", "r", encoding='utf-8') as loc_file:
+                self.loc_file = yaml.safe_load(loc_file)
+            self.info_box.warning(self, 'Loading localization', 'Localization file not found! Using default english instead!')
+            logging.warning("Localization defaulted to English!")
+
+    def applyLocalizationToUi(self) -> None:
+        self.labl_language.setText(self.loc_file['UI']['labl_language'])
+        self.gbox_timeNotification.setTitle(self.loc_file['UI']['gbox_timeNotification'])
+        self.gbox_webRedirect.setTitle(self.loc_file['UI']['gbox_webRedirect'])
+        self.btn_setNotifTime.setText(self.loc_file['UI']['btn_setNotifTime'])
+        self.cbox_playNotifSound.setText(self.loc_file['UI']['cbox_playNotifSound'])
+        self.cbox_openUiAfterNotif.setText(self.loc_file['UI']['cbox_openUiAfterNotif'])
+        self.rbtn_defaultRedirect.setText(self.loc_file['UI']['rbtn_defaultRedirect'])
+        self.rbtn_customRedirect.setText(self.loc_file['UI']['rbtn_customRedirect'])
+        self.gbox_customRedirect.setTitle(self.loc_file['UI']['gbox_customRedirect'])
+        self.btn_resetCustomRedirect.setText(self.loc_file['UI']['btn_resetCustomRedirect'])
+        self.btn_setCustomRedirect.setText(self.loc_file['UI']['btn_setCustomRedirect'])
+        self.gbox_advanced.setTitle(self.loc_file['UI']['gbox_advanced'])
+        self.gbox_adv_updateMethod.setTitle(self.loc_file['UI']['gbox_adv_updateMethod'])
+        self.rbtn_continuousUpdate.setText(self.loc_file['UI']['rbtn_continuousUpdate'])
+        self.rbtn_fixedRefreshRate.setText(self.loc_file['UI']['rbtn_fixedRefreshRate'])
+        self.gbox_adv_refreshRate.setTitle(self.loc_file['UI']['gbox_adv_refreshRate'])
+        self.updateGUIRefreshRateLabel()
+        self.gbox_adv_stopMode.setTitle(self.loc_file['UI']['gbox_adv_stopMode'])
+        self.labl_stopType.setText(self.loc_file['UI']['labl_stopType'])
+        self.btn_stopPasswordSet.setText(self.loc_file['UI']['btn_stopPasswordSet'])
+
+        # Stop mode combobox
+        self.combox_stopType.setItemText(0, self.loc_file['UI']['combox_stopType_free'])
+        self.combox_stopType.setItemText(1, self.loc_file['UI']['combox_stopType_strict'])
+        self.combox_stopType.setItemText(2, self.loc_file['UI']['combox_stopType_password'])
+
+        # Password gbox
+        self.updateGroupStates()
 
     def resetSettings(self) -> None: # Defaults everything
         util_setupDefaultConfig()
@@ -289,7 +342,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gbox_timeNotification.setChecked(config['PREFERENCES_TIME_NOTIF']['time_notif'])
         self.cbox_playNotifSound.setChecked(config['PREFERENCES_TIME_NOTIF']['notif_sound'])
         self.cbox_openUiAfterNotif.setChecked(config['PREFERENCES_TIME_NOTIF']['open_app'])
-        self.labl_curNotification.setText(f'Current notification: {configTime.hour()}h {configTime.minute()}m {configTime.second()}s')
+        self.labl_curNotification.setText(self.loc_file['NOTIFICATION']['notifset_text'].format(
+            configTime.hour(), self.loc_file['BASE']['hour'],
+            configTime.minute(), self.loc_file['BASE']['minute'],
+            configTime.second(), self.loc_file['BASE']['second']
+        ))
         self.tedit_notificationTime.setTime(configTime)
 
         # PREFERENCES_WEBSITE_REDIR
@@ -316,7 +373,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.rbtn_continuousUpdate.setChecked(False)
             self.gbox_adv_refreshRate.setEnabled(True)
         self.slider_refreshRate.setValue(int(config['ADVANCED_UPDATE_METHOD']['refresh_rate']))
-        self.labl_refreshRateText.setText(f'{round(self.slider_refreshRate.value()/mMulti.secound.value, 1)} sec')
+        self.labl_refreshRateText.setText(f'{round(self.slider_refreshRate.value()/mMulti.secound.value, 1)} {self.loc_file["BASE"]["second_long"]}')
 
         # ADVANCED_STOP_MODE
         match (int(config['ADVANCED_STOP_MODE']['stop_type'])):
@@ -345,16 +402,16 @@ class MainWindow(QtWidgets.QMainWindow):
     # Main timer operations
 
     def userSetupTimer(self) -> None: # Function for setting up a timer by user input
-        userTime = QtWidgets.QInputDialog.getText(self, "Setting up a timer",
-                                                  "Set a time in hh:mm:ss format (>99h is unsupported!)",
+        userTime = QtWidgets.QInputDialog.getText(self, self.loc_file['WIDGETS']['usertime_title'],
+                                                  self.loc_file['WIDGETS']['usertime_content'],
                                                   QtWidgets.QLineEdit.Normal, config['BASE']['user_time'])
         if userTime[1]:
             try:
                 allMillTime = util_convertToMsecs(userTime[0])
             except ValueError:
-                self.info_box.warning(self, 'Seting up a timer',
-                                      'Wrong format! Use hh:mm:ss!')
-                logging.error("User tried to use forbidden time format!")
+                self.info_box.warning(self, self.loc_file['WIDGETS']['usertime_warning_title'],
+                                      self.loc_file['WIDGETS']['usertime_warning_content'])
+                logging.error("User wrote some gibberish!")
                 return 'Wrong format error'
             self.updateConfigTime(userTime[0])
             self.fullStopTimer()
@@ -370,9 +427,9 @@ class MainWindow(QtWidgets.QMainWindow):
             time = self.mainTimer.interval()
 
         self.lable_time.setText(PyQt5.QtCore.QTime(0,0,0).addMSecs(time).toString('hh:mm:ss'))
-        if config['PREFERENCES_TIME_NOTIF']['time_notif'] and not self.isNotificationPlayed:
-            self.checkForNorification()
         self.launchTimerLabelUpdateRoutine()
+        if config['PREFERENCES_TIME_NOTIF']['time_notif'] and not self.isNotificationPlayed:
+            self.checkForNotification()
 
     def startStopTimer(self) -> None: # Manual startup and stoppage of a timer
         if not self.mainTimer.isActive():
@@ -387,7 +444,7 @@ class MainWindow(QtWidgets.QMainWindow):
         elif self.mainTimer.isActive():
 
             if config['ADVANCED_STOP_MODE']['stop_type'] == 2:
-                passGranted = self.askStopPassword('Enter a password to pause timer')
+                passGranted = self.askStopPassword(self.loc_file['WIDGETS']['pass_ask_content_pause'])
                 if not passGranted:
                     return False
 
@@ -420,12 +477,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def fullStopTimer(self) -> None: # Manual full stoppage of a timer
         if config['ADVANCED_STOP_MODE']['stop_type'] == 2:
-            passGranted = self.askStopPassword('Enter a password to fully stop the timer')
+            passGranted = self.askStopPassword(self.loc_file['WIDGETS']['pass_ask_content_fullstop'])
             if passGranted:
                 self.mainTimerTimeout()
                 logging.warning('Main timer is manualy full stoped!')
             else:
-                self.info_box.warning(self, 'Wrong password!', 'Wrong password! Try again!')
+                self.info_box.warning(self, self.loc_file['WIDGETS']['wrongpass_warning_title'], self.loc_file['WIDGETS']['wrongpass_warning_content'])
         else:
             self.mainTimerTimeout()
             logging.warning('Main timer is manualy full stoped!')
@@ -492,9 +549,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if config['ADVANCED_STOP_MODE']['stop_type'] != self.combox_stopType.currentIndex():
             if config['ADVANCED_STOP_MODE']['stop_type'] == 2:
-                passGranted = self.askStopPassword('Enter a password to change stop mode')
+                passGranted = self.askStopPassword(self.loc_file['WIDGETS']['pass_ask_content_changestop'])
                 if not passGranted:
-                    self.info_box.warning(self, 'Wrong password!', 'Wrong password! Try again!')
+                    self.info_box.warning(self, self.loc_file['WIDGETS']['wrongpass_warning_title'], self.loc_file['WIDGETS']['wrongpass_warning_content'])
                     self.combox_stopType.setCurrentIndex(2)
                 else:
                     config['ADVANCED_STOP_MODE']['stop_type'] = self.combox_stopType.currentIndex()
@@ -510,6 +567,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.gbox_passwordStop.setEnabled(False)
         self.gbox_adv_refreshRate.setEnabled(self.rbtn_fixedRefreshRate.isChecked())
         self.ledit_customRedirect.setText(config['PREFERENCES_WEBSITE_REDIR']['custom_url'])
+
+        if config['ADVANCED_STOP_MODE']['stop_password'] == "":
+            self.gbox_passwordStop.setTitle(self.loc_file['UI']['gbox_passwordStop_na'])
+        else:
+            self.gbox_passwordStop.setTitle(self.loc_file['UI']['gbox_passwordStop_set'])
+
         logging.warning("Group states are updated!")
 
     def lockSettingsChange(self) -> None: # Locks all settings in place and prevents making a change
@@ -524,16 +587,38 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tab_websites.setEnabled(True)
         logging.warning("Settings changes are enabled!")
 
+    def onLocalizationChanged(self) -> None:
+        new_language = self.combox_language.currentText()
+        config['BASE']['language'] = new_language
+        util_writeConfigChanges()
+        self.loadLocalizationFile()
+        self.applyLocalizationToUi()
+
+    def updateAvalibleLanguages(self) -> None:
+        self.combox_language.clear()
+        av_languages = glob.glob(".\\Localization\\*.yml")
+        for lang in av_languages:
+            lang = lang.split(".yml")[0].split(".\\Localization\\")[1]
+            self.combox_language.addItem(lang)
+
+        # Finding and setting correct index
+        found_index = self.combox_language.findText(config['BASE']['language'])
+        if found_index != -1:
+            self.combox_language.setCurrentIndex(found_index)
+        else:
+            self.combox_language.setCurrentIndex(0)
+
+
     # Custom redirect
 
     def setCustomRedirect(self) -> None: # On clicking custom redirect set button
         if self.ledit_customRedirect.text() != '':
             config['PREFERENCES_WEBSITE_REDIR']['custom_url'] = self.ledit_customRedirect.text()
             util_writeConfigChanges()
-            self.info_box.information(self, 'Setting custom redirect', f'Redirect is set to {self.ledit_customRedirect.text()}!')
+            self.info_box.information(self, self.loc_file['WIDGET']['customredir_title'], self.loc_file['WIDGET']['customredir_content'].format(self.ledit_customRedirect.text()))
             self.updateGroupStates()
         else:
-            self.info_box.warning(self, 'Setting custom redirect', 'Field can not be empty! Please, enter a viable ip and try again!')
+            self.info_box.warning(self, self.loc_file['WIDGET']['customredir_warning_title'], self.loc_file['WIDGET']['customredir_warning_content'])
             self.ledit_customRedirect.setText(config['PREFERENCES_WEBSITE_REDIR']['custom_url'])
         logging.warning("Custom redirect is set")
 
@@ -541,7 +626,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ledit_customRedirect.setText('127.0.0.1')
         config['PREFERENCES_WEBSITE_REDIR']['custom_url'] = self.ledit_customRedirect.text()
         util_writeConfigChanges()
-        self.info_box.information(self,'Reseting custom redirect', 'Redirect is reseted to a default value of "127.0.0.1"!')
+        self.info_box.information(self, self.loc_file['WIDGET']['customredir_restore_title'] , self.loc_file['WIDGET']['customredir_restore_content'])
         self.updateGroupStates()
         logging.warning("Custom redirect reset")
 
@@ -554,31 +639,31 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info("Blocker refresh rate is updated")
 
     def updateGUIRefreshRateLabel(self) -> None: # Updates refresh rate label in gui thru config
-        self.labl_refreshRateText.setText(str(round(config['ADVANCED_UPDATE_METHOD']['refresh_rate']/mMulti.secound.value, 1)) + ' sec')
+        self.labl_refreshRateText.setText(str(round(config['ADVANCED_UPDATE_METHOD']['refresh_rate']/mMulti.secound.value, 1)) + f" {self.loc_file['BASE']['second_long']}")
 
     # Stop password
 
     def setCustomStopPassword(self) -> None:
         if self.ledit_stopPassword.text() != '':
             if config['ADVANCED_STOP_MODE']['stop_password'] != "None" and config['ADVANCED_STOP_MODE']['stop_type'] == 2:
-                passGranted = self.askStopPassword('Enter old password to setup a new one')
+                passGranted = self.askStopPassword(self.loc_file['WIDGETS']['pass_ask_content_old'])
                 if not passGranted:
-                    self.info_box.warning(self, 'Wrong password!', 'Wrong password! Try again!')
+                    self.info_box.warning(self, self.loc_file['WIDGETS']['wrongpass_warning_title'], self.loc_file['WIDGETS']['wrongpass_warning_content'])
                     return False
             encodedPass = self.ledit_stopPassword.text().encode('utf-8')
             hashedPass = base64.b64encode(encodedPass)
             config['ADVANCED_STOP_MODE']['stop_password'] = str(hashedPass)
             util_writeConfigChanges()
-            self.info_box.information(self, 'Setting a stop password', 'Stoping password is set!')
+            self.info_box.information(self, self.loc_file['WIDGETS']['pass_set_title'], self.loc_file['WIDGETS']['pass_set_content'])
             self.updateGroupStates()
             logging.warning("Stop password is set!")
         else:
-            self.info_box.warning(self, 'Setting a stop password', 'Field can not be empty! Please fill it with something!')
+            self.info_box.warning(self, self.loc_file['WIDGETS']['pass_set_warning_title'], self.loc_file['WIDGETS']['pass_set_warning_content'])
 
     def askStopPassword(self, stopPassReasonText: str) -> bool:
         logging.warning("Asking a stop password...")
         if config['ADVANCED_STOP_MODE']['stop_password'] != "None":
-            userPass = QtWidgets.QInputDialog.getText(self, "Enter password",
+            userPass = QtWidgets.QInputDialog.getText(self, self.loc_file['WIDGETS']['pass_ask_title'],
                                                             stopPassReasonText,
                                                             QtWidgets.QLineEdit.Normal,
                                                             '')
@@ -662,34 +747,34 @@ class MainWindow(QtWidgets.QMainWindow):
         match (type):
             case blockSubjectType.app:
                 subjectName = QtWidgets.QInputDialog.getText(self,
-                                                             "Blocking app",
-                                                             "Enter app executable name (e.g calc.exe)",
+                                                             self.loc_file['BLOCKING']['app_title'],
+                                                             self.loc_file['BLOCKING']['app_content'],
                                                              QtWidgets.QLineEdit.Normal, '')
                 if subjectName[1]: # Check for canceling
                     if subjectName[0] != '' and subjectName[0][0] != '.': # Not adding an empty subject or glitched subject
                         self.list_blockedApps.addItem(subjectName[0])
-                        self.info_box.information(self, "Blocking app",
-                                             f"App '{subjectName[0]}' is successfully added in a block list!")
+                        self.info_box.information(self, self.loc_file['BLOCKING']['app_title'],
+                                             self.loc_file['BLOCKING']['app_added'].format(subjectName[0]))
                         self.updateConfigBlockedLists(blockSubjectType.app)
                         logging.warning(f"App '{subjectName[0]}' was added to app block list!")
                     else:
-                        self.info_box.warning(self, "Blocking app",
-                                         "Please, fill this field with something! No point on blocking nothingness!")
+                        self.info_box.warning(self, self.loc_file['BLOCKING']['app_title'],
+                                         self.loc_file['BLOCKING']['app_nofill'])
             case blockSubjectType.website:
                 subjectName = QtWidgets.QInputDialog.getText(self,
-                                                             "Blocking website",
-                                                             "Enter a link (e.g google.com)",
+                                                             self.loc_file['BLOCKING']['web_title'],
+                                                             self.loc_file['BLOCKING']['web_content'],
                                                              QtWidgets.QLineEdit.Normal, '')
                 if subjectName[1]: # Check for canceling
                     if subjectName[0] != '' and subjectName[0][0] != '.': # Not adding an empty subject or glitched subject
                         self.list_blockedWebsites.addItem(subjectName[0])
-                        self.info_box.information(self, "Blocking website",
-                                             f"Website '{subjectName[0]}' is successfully added in a block list!")
+                        self.info_box.information(self, self.loc_file['BLOCKING']['web_title'],
+                                             self.loc_file['BLOCKING']['web_added'].format(subjectName[0]))
                         self.updateConfigBlockedLists(blockSubjectType.website)
                         logging.warning(f"Website '{subjectName[0]}' was added to website block list!")
                     else:
-                        self.info_box.warning(self, "Blocking website",
-                                         "Please, fill this field with something! No point on blocking nothingness!")
+                        self.info_box.warning(self, self.loc_file['BLOCKING']['web_title'],
+                                         self.loc_file['BLOCKING']['web_nofill'])
             case _:
                 logging.critical("wha... well... doin nothing then...")
 
@@ -699,38 +784,38 @@ class MainWindow(QtWidgets.QMainWindow):
             case blockSubjectType.app:
                 if self.list_blockedApps.currentItem() != None:
                     itemOldText = self.list_blockedApps.currentItem().text()
-                    subjectChangedName = QtWidgets.QInputDialog.getText(self, "Editing blocked app",
-                                                                        "Edit a name of blocked app",
+                    subjectChangedName = QtWidgets.QInputDialog.getText(self, self.loc_file['BLOCKING']['app_edit_title'],
+                                                                        self.loc_file['BLOCKING']['app_edit_content'],
                                                                         QtWidgets.QLineEdit.Normal,
                                                                         itemOldText)
                 if subjectChangedName[1]: # Check for canceling
                     if subjectChangedName[0] != '' and subjectChangedName[0][0] != '.':
                         self.list_blockedApps.currentItem().setText(subjectChangedName[0])
-                        self.info_box.information(self, "Editing blocked app",
-                                                  f"Application name changed from '{itemOldText}' to '{subjectChangedName[0]}'!")
+                        self.info_box.information(self, self.loc_file['BLOCKING']['app_edit_title'],
+                                                  self.loc_file['BLOCKING']['app_edit_done'].format(itemOldText, subjectChangedName[0]))
                         self.updateConfigBlockedLists(blockSubjectType.app)
                         logging.warning(f"Subject '{itemOldText}' is renamed to '{subjectChangedName[0]}'!")
                     else:
-                        self.info_box.warning(self, "Editing blocked app",
-                                              "Incorrect name! It can't be empty or start with a dot!")
+                        self.info_box.warning(self, self.loc_file['BLOCKING']['app_edit_title'],
+                                              self.loc_file['BLOCKING']['app_edit_nofill'])
                         logging.error("New subject name is invalid...")
             case blockSubjectType.website:
                 if self.list_blockedWebsites.currentItem() != None:
                     itemOldText = self.list_blockedWebsites.currentItem().text()
-                    subjectChangedName = QtWidgets.QInputDialog.getText(self, "Editing blocked website",
-                                                                        "Edit an adress of blocked website",
+                    subjectChangedName = QtWidgets.QInputDialog.getText(self, self.loc_file['BLOCKING']['web_edit_title'],
+                                                                        self.loc_file['BLOCKING']['web_edit_content'],
                                                                         QtWidgets.QLineEdit.Normal,
                                                                         itemOldText)
                 if subjectChangedName[1]: # Check for canceling
                     if subjectChangedName[0] != '' and subjectChangedName[0][0] != '.':
                         self.list_blockedWebsites.currentItem().setText(subjectChangedName[0])
-                        self.info_box.information(self, "Editing blocked website",
-                                                  f"Website adress changed from '{itemOldText}' to '{subjectChangedName[0]}'!")
+                        self.info_box.information(self, self.loc_file['BLOCKING']['web_edit_title'],
+                                                  self.loc_file['BLOCKING']['web_edit_done'].format(itemOldText, subjectChangedName[0]))
                         self.updateConfigBlockedLists(blockSubjectType.website)
                         logging.error(f"Website adress of '{itemOldText}' changed to '{subjectChangedName[0]}'!")
                     else:
-                        self.info_box.warning(self, "Editing blocked website",
-                                              "Incorrect adress! It can't be empty or start with a dot!")
+                        self.info_box.warning(self, self.loc_file['BLOCKING']['web_edit_title'],
+                                              self.loc_file['BLOCKING']['web_edit_nofill'])
                         logging.error("New subject adress is invalid...")
             case _:
                 logging.critical("edit go wild... moving on...")
@@ -740,8 +825,8 @@ class MainWindow(QtWidgets.QMainWindow):
         match (type):
             case blockSubjectType.app:
                 if self.list_blockedApps.currentItem() != None:
-                    user_agree = self.info_box.question(self, "Removing app from block list",
-                                                        f"Are you sure want to delete '{self.list_blockedApps.currentItem().text()}' app from block list?",
+                    user_agree = self.info_box.question(self, self.loc_file['BLOCKING']['app_rem_title'],
+                                                        self.loc_file['BLOCKING']['app_rem_content'].format(self.list_blockedApps.currentItem().text()),
                                                         self.info_box.Yes | self.info_box.No)
                     if user_agree == self.info_box.Yes:
                         takenItem = self.list_blockedApps.takeItem(self.list_blockedApps.currentRow())
@@ -750,8 +835,8 @@ class MainWindow(QtWidgets.QMainWindow):
                         logging.warning("Blocking subject is removed!")
             case blockSubjectType.website:
                 if self.list_blockedWebsites.currentItem() != None:
-                    user_agree = self.info_box.question(self, "Removing website from block list",
-                                                        f"Are you sure want to delete '{self.list_blockedWebsites.currentItem().text()}' website from block list?",
+                    user_agree = self.info_box.question(self, self.loc_file['BLOCKING']['web_rem_title'],
+                                                        self.loc_file['BLOCKING']['web_rem_content'].format(self.list_blockedWebsites.currentItem().text()),
                                                         self.info_box.Yes | self.info_box.No)
                     if user_agree == self.info_box.Yes:
                         takenItem = self.list_blockedWebsites.takeItem(self.list_blockedWebsites.currentRow())
@@ -766,24 +851,24 @@ class MainWindow(QtWidgets.QMainWindow):
         match (type):
             case blockSubjectType.app:
                 listCount = self.list_blockedApps.count()
-                userSure = self.info_box.question(self, "Clearing blocked apps",
-                                                  "Do you really wish remove all apps from blocking list?",
+                userSure = self.info_box.question(self, self.loc_file['BLOCKING']['app_clear_title'],
+                                                  self.loc_file['BLOCKING']['app_clear_ask_content'],
                                                   self.info_box.No | self.info_box.Yes)
                 if userSure == self.info_box.Yes:
                     self.list_blockedApps.clear()
-                    self.info_box.information(self, "Clearing blocked apps",
-                                              f"All {listCount} apps were removed from block list!")
+                    self.info_box.information(self, self.loc_file['BLOCKING']['app_clear_title'],
+                                              self.loc_file['BLOCKING']['app_clear_content'].format(listCount))
                     self.updateConfigBlockedLists(blockSubjectType.app)
                     logging.critical("List is cleared!")
             case blockSubjectType.website:
                 listCount = self.list_blockedWebsites.count()
-                userSure = self.info_box.question(self, "Clearing blocked websites",
-                                                  "Do you really wish remove all website adresses from blocking list?",
+                userSure = self.info_box.question(self, self.loc_file['BLOCKING']['web_clear_title'],
+                                                  self.loc_file['BLOCKING']['web_clear_ask_content'],
                                                   self.info_box.No | self.info_box.Yes)
                 if userSure == self.info_box.Yes:
                     self.list_blockedWebsites.clear()
-                    self.info_box.information(self, "Clearing blocked websites",
-                                              f"All {listCount} website adresses were removed from block list!")
+                    self.info_box.information(self, self.loc_file['BLOCKING']['web_clear_title'],
+                                              self.loc_file['BLOCKING']['web_clear_content'].format(listCount))
                     self.updateConfigBlockedLists(blockSubjectType.website)
                     logging.critical("List is cleared!")
             case _:
@@ -806,8 +891,8 @@ class MainWindow(QtWidgets.QMainWindow):
                             hostsFile.write(f"127.0.0.1 {site}\n")
                 logging.critical("Sites are blocked!")
         except PermissionError:
-            self.info_box.critical(self, "Error with blocking websites!",
-                                   "App is running without admin privileges! This means that SN_Straitjacket can't block websites because 'hosts' system file is blocked!\nPlease rerun the app as administrator!")
+            self.info_box.critical(self, self.loc_file['BLOCKING']['webblock_elevation_required_title'],
+                                   self.loc_file['BLOCKING']['webblock_elevation_required_content'])
             logging.critical("Permission error!")
 
     def doHostsBackup(self) -> None:
@@ -832,13 +917,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 hostsFile.truncate()
                 logging.critical("Sites are unblocked!")
         except PermissionError:
-            self.info_box.critical(self, "Error with unblocking websites!",
-                                   "App is running without admin privileges! This means that SN_Straitjacket can't unblock websites because 'hosts' system file is blocked!\nPlease rerun the app as administrator!")
+            self.info_box.critical(self, self.loc_file['BLOCKING']['webunblock_elevation_required_title'],
+                                   self.loc_file['BLOCKING']['webunblock_elevation_required_content'])
             logging.critical("Permission error!")
 
     # Time notification operations
 
-    def checkForNorification(self) -> None:
+    def checkForNotification(self) -> None:
         if self.lable_time.text() == config['PREFERENCES_TIME_NOTIF']['notif_time']:
             self.showNotification()
 
@@ -850,10 +935,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if config['PREFERENCES_TIME_NOTIF']['open_app'] and self.isMinimized():
             self.showNormal()
 
-        plyer.notification.notify(title="Focus notification",
-                                message=f"Focus time is at {config['PREFERENCES_TIME_NOTIF']['notif_time']}!",
-                                app_name="SN_Straitjacket",
-                                app_icon="icon.ico")
+        plyer.notification.notify(title= self.loc_file['NOTIFICATION']['title'],
+                                message= self.loc_file['NOTIFICATION']['message'].format(config['PREFERENCES_TIME_NOTIF']['notif_time']),
+                                app_name= self.loc_file['NOTIFICATION']['app_name'],
+                                app_icon= "icon.ico")
         self.isNotificationPlayed = True
 
     def updateNotificationTime(self) -> None:
@@ -861,8 +946,12 @@ class MainWindow(QtWidgets.QMainWindow):
         config['PREFERENCES_TIME_NOTIF']['notif_time'] = notifTime.toString('hh:mm:ss')
         util_writeConfigChanges()
 
-        self.labl_curNotification.setText(f'Current notification: {notifTime.hour()}h {notifTime.minute()}m {notifTime.second()}s')
-        self.info_box.information(self, "Time notification", "Notification time is changed!")
+        self.labl_curNotification.setText(self.loc_file['NOTIFICATION']['notifset_text'].format(
+            notifTime.hour(), self.loc_file['BASE']['hour'],
+            notifTime.minute(), self.loc_file['BASE']['minute'],
+            notifTime.second(), self.loc_file['BASE']['second']
+        ))
+        self.info_box.information(self, self.loc_file['NOTIFICATION']['notifset_title'], self.loc_file['NOTIFICATION']['notifset_content'])
         logging.warning("Notification time was changed!")
 
     # Closing an app
@@ -879,7 +968,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     logging.critical("Closure rejected! Stop mode is set to 'Strict'!")
                 case 2:
                     if config['ADVANCED_STOP_MODE']['stop_type'] == 2:
-                        passGranted = self.askStopPassword('Enter a stop password to turn off the program')
+                        passGranted = self.askStopPassword(self.loc_file['WIDGETS']['pass_ask_content_exit'])
                     if not passGranted:
                         event.ignore()
                         logging.critical("Closure rejected! Wrong password!")
