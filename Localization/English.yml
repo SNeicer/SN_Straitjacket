@@ -9,6 +9,8 @@ BLOCKING:
   app_content : "Enter app executable name (e.g calc.exe)"
   app_added : "App '{0}' is successfully added in a block list!"
   app_nofill : "Please, fill this field with something! No point on blocking nothingness!"
+  app_dialog_title : "Adding apps to the block list"
+  app_dialog_content : "Selected items are successfully added to the block list!"
   web_title : "Blocking website"
   web_content : "Enter a link (e.g google.com)"
   web_added : "Website '{0}' is successfully added in a block list!"
@@ -94,3 +96,7 @@ UI:
   gbox_passwordStop_na : "Password (Currently: N/A)"
   gbox_passwordStop_set : "Password (Currently: Set!)"
   btn_stopPasswordSet : "Set"
+
+PROCESS_DIALOG:
+  title: "Select processes for blocking"
+  custom_item: "Custom"

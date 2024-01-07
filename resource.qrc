@@ -1,5 +1,10 @@
 <RCC>
   <qresource prefix="Icons">
+    <file>Resources/unknownIcon.png</file>
+    <file>Resources/backIcon.png</file>
+    <file>Resources/checkIcon.png</file>
+    <file>Resources/refreshIcon.png</file>
+    <file>Resources/selectionMenu.png</file>
     <file>Resources/creditsForApp.png</file>
     <file>Resources/stopIcon.png</file>
     <file>Resources/clearIcon.png</file>

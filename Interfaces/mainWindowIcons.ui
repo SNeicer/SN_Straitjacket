@@ -321,7 +321,7 @@
          </spacer>
         </item>
         <item>
-         <layout class="QVBoxLayout" name="layout_apps" stretch="10,0,0,25,0">
+         <layout class="QVBoxLayout" name="layout_apps" stretch="20,10,0,0,25,0">
           <property name="spacing">
            <number>10</number>
           </property>
@@ -330,6 +330,29 @@
           </property>
           <item>
            <widget class="QPushButton" name="btn_addApp">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../resource.qrc">
+              <normaloff>:/Icons/Resources/selectionMenu.png</normaloff>:/Icons/Resources/selectionMenu.png</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>40</width>
+              <height>40</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_directAdd">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
               <horstretch>0</horstretch>

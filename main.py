@@ -8,6 +8,8 @@ from PyQt5 import QtWidgets, uic, QtGui
 import sys
 import os
 import enum
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget
 import resource_rc
 import tomlkit as tk
 import psutil
@@ -25,7 +27,7 @@ import winsound
 
 # Implement plyer.platforms.win.notification as a hidden import
 
-cur_app_version = 'release-v1.1' # Do not forget to update this one
+cur_app_version = 'release-v1.2' # Do not forget to update this one
 
 class blockSubjectType(enum.Enum):
     app = 1
@@ -181,7 +183,7 @@ class multiprocessingBlocker():
                 sleep(int(config['ADVANCED_UPDATE_METHOD']['refresh_rate'] / mMulti.secound.value))
         else:
             while True:
-                for proc in psutil.process_iter():
+                for proc in psutil.process_iter(): # Some changes to locate this thingy
                     if proc.name() in self.blockList:
                         proc.kill()
                         continue
@@ -198,6 +200,131 @@ sys.excepthook = snsj_exception_hook
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, filename="log.log", filemode='w',
                         format="[%(asctime)s | %(funcName)s] %(levelname)s - %(message)s")
+    from icoextract import IconExtractor, NoIconsAvailableError
+
+
+class GetProcessesDialog(QtWidgets.QDialog):
+    def __init__(self, loc_file, parent=None) -> None:
+        super().__init__(parent)
+        uic.loadUi("Interfaces\\getProcessesDialog.ui", self)
+        self.loc_file = loc_file
+        self.setWindowTitle(self.loc_file['PROCESS_DIALOG']['title'])
+
+        # Loading unknown icon for processes without icons
+        self.icon_unknown = QtGui.QIcon()
+        self.icon_unknown.addFile(u":/Icons/Resources/unknownIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+
+        # Loading icons for buttons
+        self.icon_select = QtGui.QIcon()
+        self.icon_select.addFile(u":/Icons/Resources/checkIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.icon_add = QtGui.QIcon()
+        self.icon_add.addFile(u":/Icons/Resources/plusIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.icon_back = QtGui.QIcon()
+        self.icon_back.addFile(u":/Icons/Resources/backIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.icon_refresh = QtGui.QIcon()
+        self.icon_refresh.addFile(u":/Icons/Resources/refreshIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+
+        # Adding those buttons
+        self.addBBoxButtons()
+
+        # Some thigs for process list
+        self.system_proc_brush = QtGui.QBrush()
+        self.system_proc_brush.setStyle(Qt.SolidPattern)
+        self.system_proc_brush.setColor(Qt.blue)
+
+    # Adding buttons to button box
+    def addBBoxButtons(self) -> None:
+        # Creating buttons
+        self.selectProcessesButton = QtWidgets.QPushButton()
+        self.refreshButton = QtWidgets.QPushButton()
+        self.directInputSelectionButton = QtWidgets.QPushButton()
+        self.cancelSelectionButton = QtWidgets.QPushButton()
+
+        # Adding icons to them
+        self.refreshButton.setIcon(self.icon_refresh)
+        self.directInputSelectionButton.setIcon(self.icon_add)
+        self.selectProcessesButton.setIcon(self.icon_select)
+        self.cancelSelectionButton.setIcon(self.icon_back)
+
+        # Sizing buttons properly
+        #self.refreshButton.setMinimumSize(0, 40)
+        self.refreshButton.setIconSize(PyQt5.QtCore.QSize(32,32))
+        self.directInputSelectionButton.setIconSize(PyQt5.QtCore.QSize(32,32))
+        self.selectProcessesButton.setIconSize(PyQt5.QtCore.QSize(32,32))
+        self.cancelSelectionButton.setIconSize(PyQt5.QtCore.QSize(32,32))
+
+        # Adding buttons to the container and giving them a role
+        self.bbox.addButton(self.selectProcessesButton, QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole)
+        self.bbox.addButton(self.refreshButton, QtWidgets.QDialogButtonBox.ButtonRole.ActionRole)
+        self.bbox.addButton(self.directInputSelectionButton, QtWidgets.QDialogButtonBox.ButtonRole.ActionRole)
+        self.bbox.addButton(self.cancelSelectionButton, QtWidgets.QDialogButtonBox.ButtonRole.RejectRole)
+
+        # Connecting buttons by using signals
+        self.selectProcessesButton.clicked.connect(self.accept)
+        self.refreshButton.clicked.connect(self.fillWithRunningProcesses)
+        self.directInputSelectionButton.clicked.connect(self.selectFromName)
+        self.cancelSelectionButton.clicked.connect(self.reject)
+
+    def selectFromName(self) -> None:
+        subjectName = QtWidgets.QInputDialog.getText(self, self.loc_file['BLOCKING']['app_title'],
+                                                     self.loc_file['BLOCKING']['app_content'],
+                                                     QtWidgets.QLineEdit.Normal, '')
+        if subjectName[1]:
+            if subjectName[0] != '': # FOR THE GODS SAKE ADD REGEX!!!!!!!
+                new_block_item = QtWidgets.QListWidgetItem(subjectName[0] + f' ({self.loc_file["PROCESS_DIALOG"]["custom_item"]})')
+                self.list_processes.insertItem(0, new_block_item)
+                new_block_item.setSelected(True)
+
+    def fillWithRunningProcesses(self) -> None:
+        logging.warning('Filling process dialog with running executables')
+        self.list_processes.clear()
+
+        base_processes = []
+        trusted_processes = []
+        for proc in psutil.process_iter(): # Some changes to locate this thingy
+            try:
+                # Getting a process
+                if proc.exe() != "" and proc.exe() != "Registry":
+                    proc_item = QtWidgets.QListWidgetItem(f"{proc.name()} ({proc.exe()})")
+                else:
+                    continue
+
+                # Getting an icon
+                try:
+                    extracted_icon = IconExtractor(proc.exe())
+                    exe_icon = extracted_icon.get_icon()
+                    exe_icon.seek(0) # Otherwise it will return b''. Which means - nothing
+                    if exe_icon != b'': # Double check, just to be sure...
+                        new_pixmap = QtGui.QPixmap()
+                        new_pixmap.loadFromData(exe_icon.read())
+                        new_icon = QtGui.QIcon()
+                        new_icon.addPixmap(new_pixmap)
+                        proc_item.setIcon(new_icon)
+                    else:
+                        proc_item.setIcon(self.icon_unknown)
+                except (NoIconsAvailableError, FileNotFoundError):
+                    logging.info(f"No icons found for process: {proc.name()}")
+                    proc_item.setIcon(self.icon_unknown)
+
+                # If situated in a system folder, make the process trusted
+                if "C:\\Windows\\System32\\" in proc.exe():
+                    proc_item.setForeground(self.system_proc_brush)
+                    trusted_processes.append(proc_item)
+                else:
+                    base_processes.append(proc_item)
+
+            except psutil.AccessDenied:
+                logging.warning('Some app denied access!')
+                continue
+
+        # Filling with base processes
+        for base_proc in base_processes:
+            self.list_processes.addItem(base_proc)
+        self.list_processes.sortItems()
+
+        # Add trusted to the bottom
+        for trusted_proc in trusted_processes:
+            self.list_processes.addItem(trusted_proc)
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
@@ -208,6 +335,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.applyLocalizationToUi()
         self.updateAvalibleLanguages()
         self.show()
+        self.getProcDialog = GetProcessesDialog(self.loc_file, self)
         self.info_box = QtWidgets.QMessageBox()
         self.updateListButtonStates()
         self.mainTimer = PyQt5.QtCore.QTimer() # Setting up main timer
@@ -228,7 +356,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(f'SN_Straitjacket - {cur_app_version}')
 
         # Setting up button connections
-        self.btn_addApp.clicked.connect(lambda: self.addBlockedSubject(blockSubjectType.app))
+        #self.btn_addApp.clicked.connect(lambda: self.addBlockedSubject(blockSubjectType.app))
+        self.btn_addApp.clicked.connect(self.blockAppsFromDialog)
+        self.btn_directAdd.clicked.connect(lambda: self.addBlockedSubject(blockSubjectType.app))
         self.btn_addWebsite.clicked.connect(lambda: self.addBlockedSubject(blockSubjectType.website))
 
         self.btn_remApp.clicked.connect(lambda: self.removeBlockedSubject(blockSubjectType.app))
@@ -608,7 +738,6 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.combox_language.setCurrentIndex(0)
 
-
     # Custom redirect
 
     def setCustomRedirect(self) -> None: # On clicking custom redirect set button
@@ -874,6 +1003,28 @@ class MainWindow(QtWidgets.QMainWindow):
             case _:
                 logging.critical("clearing go wild... moving on...")
         self.updateListButtonStates()
+
+    def blockAppsFromDialog(self) -> None:
+        self.getProcDialog.fillWithRunningProcesses()
+        if self.getProcDialog.exec():
+            selectedProcessItems = self.getProcDialog.list_processes.selectedItems()
+            selectedProcesses = []
+            for process in selectedProcessItems:
+                processRealName = process.text().split(" (")[0]
+                selectedProcesses.append(processRealName)
+                selectedProcesses = list(dict.fromkeys(selectedProcesses)) # To avoid duplicates
+            logging.warning(f'User selection: {selectedProcesses}')
+            for blockedSelection in selectedProcesses:
+                if not blockedSelection in config['BASE']['blocked_apps']:
+                    self.list_blockedApps.addItem(blockedSelection)
+                else:
+                    logging.warning(f'Selected item "{blockedSelection}" already in a block list! Skipping...')
+            self.updateConfigBlockedLists(blockSubjectType.app)
+            logging.warning('Selected items are added to the block list!')
+            self.info_box.information(self, self.loc_file['BLOCKING']['app_dialog_title'],
+                                      self.loc_file['BLOCKING']['app_dialog_content'])
+        else:
+            logging.warning('User canceled selection!')
 
     # Hosts operations
 
