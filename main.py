@@ -1,4 +1,4 @@
-# SN-Straitjacket (Version v1.0S) #
+# SN-Straitjacket (Version v1.2) #
 # GitHub: https://github.com/SNeicer/SN_Straitjacket #
 # Discord: SNeicer#1342 #
 # EMail: b2jnz7hlw@mozmail.com #
