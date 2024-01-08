@@ -100,3 +100,10 @@ UI:
 PROCESS_DIALOG:
   title: "Select processes for blocking"
   custom_item: "Custom"
+
+TABS:
+  timer: "Timer"
+  apps: "Apps"
+  websites: "Web"
+  preferences: "Preferences"
+  credits: "Credits"

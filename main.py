@@ -1,6 +1,6 @@
-# SN-Straitjacket (Version v1.2) #
+# SN-Straitjacket (Version v1.3) #
 # GitHub: https://github.com/SNeicer/SN_Straitjacket #
-# Discord: SNeicer#1342 #
+# Discord: sneicer #
 # EMail: b2jnz7hlw@mozmail.com #
 
 import PyQt5.QtCore
@@ -24,10 +24,11 @@ from win32api import SetFileAttributes
 import logging
 import plyer
 import winsound
+import qdarktheme
 
 # Implement plyer.platforms.win.notification as a hidden import
 
-cur_app_version = 'release-v1.2' # Do not forget to update this one
+cur_app_version = 'release-v1.3' # Do not forget to update this one
 
 class blockSubjectType(enum.Enum):
     app = 1
@@ -61,6 +62,7 @@ def util_setupDefaultConfig():
     cat_base.add('blocked_websites', [])
     cat_base.add('app_version', cur_app_version)
     cat_base.add('language', 'English')
+    cat_base.add('theme', 0)
 
     cat_time_notif = tk.table()
     cat_time_notif.add('time_notif', False)
@@ -100,6 +102,9 @@ def util_configCompatibilityCheck():
 
     if not ('language' in config['BASE']):
         config['BASE']['language'] = 'English'
+
+    if not ('theme' in config['BASE']):
+        config['BASE']['theme'] = 0
 
     util_writeConfigChanges()
 
@@ -247,7 +252,6 @@ class GetProcessesDialog(QtWidgets.QDialog):
         self.cancelSelectionButton.setIcon(self.icon_back)
 
         # Sizing buttons properly
-        #self.refreshButton.setMinimumSize(0, 40)
         self.refreshButton.setIconSize(PyQt5.QtCore.QSize(32,32))
         self.directInputSelectionButton.setIconSize(PyQt5.QtCore.QSize(32,32))
         self.selectProcessesButton.setIconSize(PyQt5.QtCore.QSize(32,32))
@@ -329,7 +333,7 @@ class GetProcessesDialog(QtWidgets.QDialog):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super(MainWindow, self).__init__()
-        uic.loadUi("Interfaces\\mainWindowIcons.ui", self)
+        uic.loadUi("Interfaces\\mainWindowIconsV2.ui", self)
         util_configCompatibilityCheck()
         self.loadLocalizationFile()
         self.applyLocalizationToUi()
@@ -347,10 +351,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.blockManager = multiprocessingBlocker()
         self.updateButtonIcons()
         self.isNotificationPlayed = False # For canceling multiple activations at once
+        #self.updateTheme()
 
         # Some cosmetic stuff for main window and info box
         windowIcon = QtGui.QIcon()
         windowIcon.addFile(u":/Icons/Resources/setTimeIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.icon_themeDark = QtGui.QIcon()
+        self.icon_themeDark.addFile(u":/Icons/Resources/moonIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.icon_themeLight = QtGui.QIcon()
+        self.icon_themeLight.addFile(u":/Icons/Resources/sunIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setWindowIcon(windowIcon)
         self.info_box.setWindowIcon(windowIcon)
         self.setWindowTitle(f'SN_Straitjacket - {cur_app_version}')
@@ -373,6 +382,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_timerFullStop.clicked.connect(self.fullStopTimer)
 
         self.gbox_advanced.toggled.connect(self.updateGroupStates)
+
+        # Theme btn
+        self.btn_changeTheme.clicked.connect(self.changeTheme)
 
         # Updating action buttons in apps and websites tab
         self.list_blockedApps.currentRowChanged.connect(self.updateListButtonStates)
@@ -452,6 +464,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.combox_stopType.setItemText(0, self.loc_file['UI']['combox_stopType_free'])
         self.combox_stopType.setItemText(1, self.loc_file['UI']['combox_stopType_strict'])
         self.combox_stopType.setItemText(2, self.loc_file['UI']['combox_stopType_password'])
+
+        # Tabs
+        self.tabWidget.setTabText(0, self.loc_file['TABS']['timer'])
+        self.tabWidget.setTabText(1, self.loc_file['TABS']['apps'])
+        self.tabWidget.setTabText(2, self.loc_file['TABS']['websites'])
+        self.tabWidget.setTabText(3, self.loc_file['TABS']['preferences'])
+        self.tabWidget.setTabText(4, self.loc_file['TABS']['credits'])
 
         # Password gbox
         self.updateGroupStates()
@@ -737,6 +756,26 @@ class MainWindow(QtWidgets.QMainWindow):
             self.combox_language.setCurrentIndex(found_index)
         else:
             self.combox_language.setCurrentIndex(0)
+
+    def changeTheme(self) -> None:
+        if config['BASE']['theme'] == 0:
+            config['BASE']['theme'] = 1
+            util_writeConfigChanges()
+            self.updateTheme()
+            return
+        else:
+            config['BASE']['theme'] = 0
+            util_writeConfigChanges()
+            self.updateTheme()
+            return
+
+    def updateTheme(self) -> None:
+        if config['BASE']['theme'] == 0:
+            qdarktheme.setup_theme('dark')
+            self.btn_changeTheme.setIcon(self.icon_themeLight)
+        else:
+            qdarktheme.setup_theme('light')
+            self.btn_changeTheme.setIcon(self.icon_themeDark)
 
     # Custom redirect
 
@@ -1138,4 +1177,5 @@ class MainWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     MWindow = MainWindow()
+    MWindow.updateTheme()
     app.exec()

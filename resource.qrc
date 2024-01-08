@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="Icons">
+    <file>Resources/moonIcon.png</file>
+    <file>Resources/sunIcon.png</file>
     <file>Resources/unknownIcon.png</file>
     <file>Resources/backIcon.png</file>
     <file>Resources/checkIcon.png</file>

@@ -38,9 +38,6 @@
       <property name="enabled">
        <bool>true</bool>
       </property>
-      <property name="styleSheet">
-       <string notr="true"/>
-      </property>
       <property name="tabPosition">
        <enum>QTabWidget::West</enum>
       </property>
@@ -69,6 +66,12 @@
        <bool>false</bool>
       </property>
       <widget class="QWidget" name="tab_timer">
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
        <attribute name="icon">
         <iconset resource="../resource.qrc">
          <normaloff>:/Icons/Resources/timerIcon.png</normaloff>:/Icons/Resources/timerIcon.png</iconset>

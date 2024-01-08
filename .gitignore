@@ -172,5 +172,6 @@ config.ini
 config.toml
 
 # Some other unwanted stuff
+make_stuff.todo
 ErrorCodes.txt
 designDoc.txt

@@ -100,3 +100,10 @@ UI:
 PROCESS_DIALOG:
   title: "Выберите процессы для блокировки"
   custom_item: "Пользовательский"
+
+TABS:
+  timer: "Таймер"
+  apps: "Приложения"
+  websites: "Веб"
+  preferences: "Настройки"
+  credits: "Автор"
