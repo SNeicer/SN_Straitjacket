@@ -8,12 +8,13 @@ from PyQt5 import QtWidgets, uic, QtGui
 import sys
 import os
 import enum
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTime
 from PyQt5.QtWidgets import QWidget
 import resource_rc
 import tomlkit as tk
 import psutil
 import glob
+import re
 import yaml
 from time import sleep
 import multiprocessing
@@ -237,6 +238,9 @@ class GetProcessesDialog(QtWidgets.QDialog):
         self.system_proc_brush.setStyle(Qt.SolidPattern)
         self.system_proc_brush.setColor(Qt.blue)
 
+        # Regex stuff
+        self.regex_expression = re.compile(r"^[^\W][\w\d_. /:-]*$")
+
     # Adding buttons to button box
     def addBBoxButtons(self) -> None:
         # Creating buttons
@@ -274,10 +278,14 @@ class GetProcessesDialog(QtWidgets.QDialog):
                                                      self.loc_file['BLOCKING']['app_content'],
                                                      QtWidgets.QLineEdit.Normal, '')
         if subjectName[1]:
-            if subjectName[0] != '': # FOR THE GODS SAKE ADD REGEX!!!!!!!
+            if re.match(self.regex_expression, subjectName[0]): # yay regex!!
                 new_block_item = QtWidgets.QListWidgetItem(subjectName[0] + f' ({self.loc_file["PROCESS_DIALOG"]["custom_item"]})')
                 self.list_processes.insertItem(0, new_block_item)
                 new_block_item.setSelected(True)
+            else:
+                info_box = QtWidgets.QMessageBox()
+                info_box.warning(self, self.loc_file['PROCESS_DIALOG']['regex_warn_title'],
+                                 self.loc_file['BASE']['regex_content_invalid'])
 
     def fillWithRunningProcesses(self) -> None:
         logging.warning('Filling process dialog with running executables')
@@ -353,6 +361,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.isNotificationPlayed = False # For canceling multiple activations at once
         #self.updateTheme()
 
+        # Regex stuff
+        self.regex_expression = re.compile(r"^[^\W][\w\d_. /:-]*$")
+
         # Some cosmetic stuff for main window and info box
         windowIcon = QtGui.QIcon()
         windowIcon.addFile(u":/Icons/Resources/setTimeIcon.png", PyQt5.QtCore.QSize(), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -422,58 +433,6 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info("MainWindow initialized!")
 
     # Base functions
-
-    def loadLocalizationFile(self) -> None:
-        try:
-            logging.info("Loading localization from config...")
-            with open(f".\\Localization\\{config['BASE']['language']}.yml", "r", encoding='utf-8') as loc_file:
-                self.loc_file = yaml.safe_load(loc_file)
-            logging.info("Localization loaded!")
-        except FileNotFoundError:
-            logging.critical("Localization file not found! Loading English.toml instead!")
-            config['BASE']['language'] = "English"
-            util_writeConfigChanges()
-            with open(f".\\Localization\\English.yml", "r", encoding='utf-8') as loc_file:
-                self.loc_file = yaml.safe_load(loc_file)
-            self.info_box.warning(self, 'Loading localization', 'Localization file not found! Using default english instead!')
-            logging.warning("Localization defaulted to English!")
-
-    def applyLocalizationToUi(self) -> None:
-        self.labl_language.setText(self.loc_file['UI']['labl_language'])
-        self.gbox_timeNotification.setTitle(self.loc_file['UI']['gbox_timeNotification'])
-        self.gbox_webRedirect.setTitle(self.loc_file['UI']['gbox_webRedirect'])
-        self.btn_setNotifTime.setText(self.loc_file['UI']['btn_setNotifTime'])
-        self.cbox_playNotifSound.setText(self.loc_file['UI']['cbox_playNotifSound'])
-        self.cbox_openUiAfterNotif.setText(self.loc_file['UI']['cbox_openUiAfterNotif'])
-        self.rbtn_defaultRedirect.setText(self.loc_file['UI']['rbtn_defaultRedirect'])
-        self.rbtn_customRedirect.setText(self.loc_file['UI']['rbtn_customRedirect'])
-        self.gbox_customRedirect.setTitle(self.loc_file['UI']['gbox_customRedirect'])
-        self.btn_resetCustomRedirect.setText(self.loc_file['UI']['btn_resetCustomRedirect'])
-        self.btn_setCustomRedirect.setText(self.loc_file['UI']['btn_setCustomRedirect'])
-        self.gbox_advanced.setTitle(self.loc_file['UI']['gbox_advanced'])
-        self.gbox_adv_updateMethod.setTitle(self.loc_file['UI']['gbox_adv_updateMethod'])
-        self.rbtn_continuousUpdate.setText(self.loc_file['UI']['rbtn_continuousUpdate'])
-        self.rbtn_fixedRefreshRate.setText(self.loc_file['UI']['rbtn_fixedRefreshRate'])
-        self.gbox_adv_refreshRate.setTitle(self.loc_file['UI']['gbox_adv_refreshRate'])
-        self.updateGUIRefreshRateLabel()
-        self.gbox_adv_stopMode.setTitle(self.loc_file['UI']['gbox_adv_stopMode'])
-        self.labl_stopType.setText(self.loc_file['UI']['labl_stopType'])
-        self.btn_stopPasswordSet.setText(self.loc_file['UI']['btn_stopPasswordSet'])
-
-        # Stop mode combobox
-        self.combox_stopType.setItemText(0, self.loc_file['UI']['combox_stopType_free'])
-        self.combox_stopType.setItemText(1, self.loc_file['UI']['combox_stopType_strict'])
-        self.combox_stopType.setItemText(2, self.loc_file['UI']['combox_stopType_password'])
-
-        # Tabs
-        self.tabWidget.setTabText(0, self.loc_file['TABS']['timer'])
-        self.tabWidget.setTabText(1, self.loc_file['TABS']['apps'])
-        self.tabWidget.setTabText(2, self.loc_file['TABS']['websites'])
-        self.tabWidget.setTabText(3, self.loc_file['TABS']['preferences'])
-        self.tabWidget.setTabText(4, self.loc_file['TABS']['credits'])
-
-        # Password gbox
-        self.updateGroupStates()
 
     def resetSettings(self) -> None: # Defaults everything
         util_setupDefaultConfig()
@@ -736,47 +695,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tab_websites.setEnabled(True)
         logging.warning("Settings changes are enabled!")
 
-    def onLocalizationChanged(self) -> None:
-        new_language = self.combox_language.currentText()
-        config['BASE']['language'] = new_language
-        util_writeConfigChanges()
-        self.loadLocalizationFile()
-        self.applyLocalizationToUi()
-
-    def updateAvalibleLanguages(self) -> None:
-        self.combox_language.clear()
-        av_languages = glob.glob(".\\Localization\\*.yml")
-        for lang in av_languages:
-            lang = lang.split(".yml")[0].split(".\\Localization\\")[1]
-            self.combox_language.addItem(lang)
-
-        # Finding and setting correct index
-        found_index = self.combox_language.findText(config['BASE']['language'])
-        if found_index != -1:
-            self.combox_language.setCurrentIndex(found_index)
-        else:
-            self.combox_language.setCurrentIndex(0)
-
-    def changeTheme(self) -> None:
-        if config['BASE']['theme'] == 0:
-            config['BASE']['theme'] = 1
-            util_writeConfigChanges()
-            self.updateTheme()
-            return
-        else:
-            config['BASE']['theme'] = 0
-            util_writeConfigChanges()
-            self.updateTheme()
-            return
-
-    def updateTheme(self) -> None:
-        if config['BASE']['theme'] == 0:
-            qdarktheme.setup_theme('dark')
-            self.btn_changeTheme.setIcon(self.icon_themeLight)
-        else:
-            qdarktheme.setup_theme('light')
-            self.btn_changeTheme.setIcon(self.icon_themeDark)
-
     # Custom redirect
 
     def setCustomRedirect(self) -> None: # On clicking custom redirect set button
@@ -919,7 +837,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                                              self.loc_file['BLOCKING']['app_content'],
                                                              QtWidgets.QLineEdit.Normal, '')
                 if subjectName[1]: # Check for canceling
-                    if subjectName[0] != '' and subjectName[0][0] != '.': # Not adding an empty subject or glitched subject
+                    if re.match(self.regex_expression, subjectName[0]): # Checking for validity
                         self.list_blockedApps.addItem(subjectName[0])
                         self.info_box.information(self, self.loc_file['BLOCKING']['app_title'],
                                              self.loc_file['BLOCKING']['app_added'].format(subjectName[0]))
@@ -927,14 +845,14 @@ class MainWindow(QtWidgets.QMainWindow):
                         logging.warning(f"App '{subjectName[0]}' was added to app block list!")
                     else:
                         self.info_box.warning(self, self.loc_file['BLOCKING']['app_title'],
-                                         self.loc_file['BLOCKING']['app_nofill'])
+                                         self.loc_file['BASE']['regex_content_invalid'])
             case blockSubjectType.website:
                 subjectName = QtWidgets.QInputDialog.getText(self,
                                                              self.loc_file['BLOCKING']['web_title'],
                                                              self.loc_file['BLOCKING']['web_content'],
                                                              QtWidgets.QLineEdit.Normal, '')
                 if subjectName[1]: # Check for canceling
-                    if subjectName[0] != '' and subjectName[0][0] != '.': # Not adding an empty subject or glitched subject
+                    if re.match(self.regex_expression, subjectName[0]): # Checking for validity
                         self.list_blockedWebsites.addItem(subjectName[0])
                         self.info_box.information(self, self.loc_file['BLOCKING']['web_title'],
                                              self.loc_file['BLOCKING']['web_added'].format(subjectName[0]))
@@ -942,7 +860,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         logging.warning(f"Website '{subjectName[0]}' was added to website block list!")
                     else:
                         self.info_box.warning(self, self.loc_file['BLOCKING']['web_title'],
-                                         self.loc_file['BLOCKING']['web_nofill'])
+                                         self.loc_file['BASE']['regex_content_invalid'])
             case _:
                 logging.critical("wha... well... doin nothing then...")
 
@@ -1065,6 +983,112 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             logging.warning('User canceled selection!')
 
+    # Localization operations
+
+    def loadLocalizationFile(self) -> None:
+        try:
+            logging.info("Loading localization from config...")
+            with open(f".\\Localization\\{config['BASE']['language']}.yml", "r", encoding='utf-8') as loc_file:
+                self.loc_file = yaml.safe_load(loc_file)
+            logging.info("Localization loaded!")
+        except FileNotFoundError:
+            logging.critical("Localization file not found! Loading English.toml instead!")
+            config['BASE']['language'] = "English"
+            util_writeConfigChanges()
+            with open(f".\\Localization\\English.yml", "r", encoding='utf-8') as loc_file:
+                self.loc_file = yaml.safe_load(loc_file)
+            self.info_box.warning(self, 'Loading localization', 'Localization file not found! Using default english instead!')
+            logging.warning("Localization defaulted to English!")
+
+    def applyLocalizationToUi(self) -> None:
+        self.labl_language.setText(self.loc_file['UI']['labl_language'])
+        self.gbox_timeNotification.setTitle(self.loc_file['UI']['gbox_timeNotification'])
+        self.gbox_webRedirect.setTitle(self.loc_file['UI']['gbox_webRedirect'])
+        self.btn_setNotifTime.setText(self.loc_file['UI']['btn_setNotifTime'])
+        self.cbox_playNotifSound.setText(self.loc_file['UI']['cbox_playNotifSound'])
+        self.cbox_openUiAfterNotif.setText(self.loc_file['UI']['cbox_openUiAfterNotif'])
+        self.rbtn_defaultRedirect.setText(self.loc_file['UI']['rbtn_defaultRedirect'])
+        self.rbtn_customRedirect.setText(self.loc_file['UI']['rbtn_customRedirect'])
+        self.gbox_customRedirect.setTitle(self.loc_file['UI']['gbox_customRedirect'])
+        self.btn_resetCustomRedirect.setText(self.loc_file['UI']['btn_resetCustomRedirect'])
+        self.btn_setCustomRedirect.setText(self.loc_file['UI']['btn_setCustomRedirect'])
+        self.gbox_advanced.setTitle(self.loc_file['UI']['gbox_advanced'])
+        self.gbox_adv_updateMethod.setTitle(self.loc_file['UI']['gbox_adv_updateMethod'])
+        self.rbtn_continuousUpdate.setText(self.loc_file['UI']['rbtn_continuousUpdate'])
+        self.rbtn_fixedRefreshRate.setText(self.loc_file['UI']['rbtn_fixedRefreshRate'])
+        self.gbox_adv_refreshRate.setTitle(self.loc_file['UI']['gbox_adv_refreshRate'])
+        self.updateGUIRefreshRateLabel()
+        self.gbox_adv_stopMode.setTitle(self.loc_file['UI']['gbox_adv_stopMode'])
+        self.labl_stopType.setText(self.loc_file['UI']['labl_stopType'])
+        self.btn_stopPasswordSet.setText(self.loc_file['UI']['btn_stopPasswordSet'])
+
+        # Stop mode combobox
+        self.combox_stopType.setItemText(0, self.loc_file['UI']['combox_stopType_free'])
+        self.combox_stopType.setItemText(1, self.loc_file['UI']['combox_stopType_strict'])
+        self.combox_stopType.setItemText(2, self.loc_file['UI']['combox_stopType_password'])
+
+        # Tabs
+        self.tabWidget.setTabText(0, self.loc_file['TABS']['timer'])
+        self.tabWidget.setTabText(1, self.loc_file['TABS']['apps'])
+        self.tabWidget.setTabText(2, self.loc_file['TABS']['websites'])
+        self.tabWidget.setTabText(3, self.loc_file['TABS']['preferences'])
+        self.tabWidget.setTabText(4, self.loc_file['TABS']['credits'])
+
+        # Time notification fix (Garbage not a fix, look at line loadConfigSettings... FIX THAT)
+        self.tedit_notificationTime.setTime(QTime.fromString(config['PREFERENCES_TIME_NOTIF']['notif_time'], 'hh:mm:ss'))
+        self.updateTimeNotificationText(self.tedit_notificationTime.time())
+
+        # Password gbox
+        self.updateGroupStates()
+
+    def onLocalizationChanged(self) -> None:
+        new_language = self.combox_language.currentText()
+        config['BASE']['language'] = new_language
+        util_writeConfigChanges()
+        self.loadLocalizationFile()
+        self.applyLocalizationToUi()
+        self.updateDialogLocalization()
+
+    def updateAvalibleLanguages(self) -> None:
+        self.combox_language.clear()
+        av_languages = glob.glob(".\\Localization\\*.yml")
+        for lang in av_languages:
+            lang = lang.split(".yml")[0].split(".\\Localization\\")[1]
+            self.combox_language.addItem(lang)
+
+        # Finding and setting correct index
+        found_index = self.combox_language.findText(config['BASE']['language'])
+        if found_index != -1:
+            self.combox_language.setCurrentIndex(found_index)
+        else:
+            self.combox_language.setCurrentIndex(0)
+
+    def updateDialogLocalization(self) -> None:
+        self.getProcDialog.loc_file = self.loc_file
+        self.getProcDialog.setWindowTitle(self.loc_file['PROCESS_DIALOG']['title'])
+
+    # Theme opertaions
+
+    def changeTheme(self) -> None:
+        if config['BASE']['theme'] == 0:
+            config['BASE']['theme'] = 1
+            util_writeConfigChanges()
+            self.updateTheme()
+            return
+        else:
+            config['BASE']['theme'] = 0
+            util_writeConfigChanges()
+            self.updateTheme()
+            return
+
+    def updateTheme(self) -> None:
+        if config['BASE']['theme'] == 0:
+            qdarktheme.setup_theme('dark')
+            self.btn_changeTheme.setIcon(self.icon_themeLight)
+        else:
+            qdarktheme.setup_theme('light')
+            self.btn_changeTheme.setIcon(self.icon_themeDark)
+
     # Hosts operations
 
     def blockWebsites(self) -> None:
@@ -1136,13 +1160,16 @@ class MainWindow(QtWidgets.QMainWindow):
         config['PREFERENCES_TIME_NOTIF']['notif_time'] = notifTime.toString('hh:mm:ss')
         util_writeConfigChanges()
 
+        self.updateTimeNotificationText(notifTime)
+        self.info_box.information(self, self.loc_file['NOTIFICATION']['notifset_title'], self.loc_file['NOTIFICATION']['notifset_content'])
+        logging.warning("Notification time was changed!")
+
+    def updateTimeNotificationText(self, notifTime: QTime) -> None:
         self.labl_curNotification.setText(self.loc_file['NOTIFICATION']['notifset_text'].format(
             notifTime.hour(), self.loc_file['BASE']['hour'],
             notifTime.minute(), self.loc_file['BASE']['minute'],
             notifTime.second(), self.loc_file['BASE']['second']
         ))
-        self.info_box.information(self, self.loc_file['NOTIFICATION']['notifset_title'], self.loc_file['NOTIFICATION']['notifset_content'])
-        logging.warning("Notification time was changed!")
 
     # Closing an app
 

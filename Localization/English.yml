@@ -3,18 +3,17 @@ BASE:
   minute : "m"
   second : "s"
   second_long : "sec"
+  regex_content_invalid : "Please, use only these symbols:\n(A-Z, a-z, '.', ' ', '/', '_', '-')\nDon't use non-letters as first symbol!"
 
 BLOCKING:
   app_title : "Blocking app"
   app_content : "Enter app executable name (e.g calc.exe)"
   app_added : "App '{0}' is successfully added in a block list!"
-  app_nofill : "Please, fill this field with something! No point on blocking nothingness!"
   app_dialog_title : "Adding apps to the block list"
   app_dialog_content : "Selected items are successfully added to the block list!"
   web_title : "Blocking website"
   web_content : "Enter a link (e.g google.com)"
   web_added : "Website '{0}' is successfully added in a block list!"
-  web_nofill : "Please, fill this field with something! No point on blocking nothingness!"
   app_edit_title : "Editing blocked app"
   app_edit_content : "Edit a name of blocked app"
   app_edit_done : "Application name changed from '{0}' to '{1}'!"
@@ -100,6 +99,7 @@ UI:
 PROCESS_DIALOG:
   title: "Select processes for blocking"
   custom_item: "Custom"
+  regex_warn_title: "Invalid process name!"
 
 TABS:
   timer: "Timer"
