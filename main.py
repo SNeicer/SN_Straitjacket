@@ -668,7 +668,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gbox_adv_refreshRate.setEnabled(self.rbtn_fixedRefreshRate.isChecked())
         self.ledit_customRedirect.setText(config['PREFERENCES_WEBSITE_REDIR']['custom_url'])
 
-        if config['ADVANCED_STOP_MODE']['stop_password'] == "":
+        if config['ADVANCED_STOP_MODE']['stop_password'] == "None":
             self.gbox_passwordStop.setTitle(self.loc_file['UI']['gbox_passwordStop_na'])
         else:
             self.gbox_passwordStop.setTitle(self.loc_file['UI']['gbox_passwordStop_set'])

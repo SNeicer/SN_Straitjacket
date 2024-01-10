@@ -92,7 +92,7 @@ UI:
   combox_stopType_free : "Free stop"
   combox_stopType_strict : "Strict stop"
   combox_stopType_password : "Password stop"
-  gbox_passwordStop_na : "Password (Currently: N/A)"
+  gbox_passwordStop_na : "Password (Currently: No)"
   gbox_passwordStop_set : "Password (Currently: Set!)"
   btn_stopPasswordSet : "Set"
 
