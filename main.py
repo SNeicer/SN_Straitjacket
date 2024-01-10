@@ -36,7 +36,7 @@ class blockSubjectType(enum.Enum):
     website = 2
 
 class mMulti(enum.Enum): # Millisecound Multiplyer
-    secound = 1000
+    second = 1000
     minute = 60000
     hour = 3600000
 
@@ -93,7 +93,6 @@ def util_setupDefaultConfig():
     with open('config.toml', 'w') as configFile:
         tk.dump(config, configFile)
         SetFileAttributes('config.toml', FILE_ATTRIBUTE_HIDDEN)
-    #logging.warning("Config file not found! Initializing a default one!")
 
 def util_configCompatibilityCheck():
     if not ('app_version' in config['BASE']):
@@ -141,7 +140,7 @@ def util_convertToMsecs(value: str) -> int:
         raise ValueError
 
     # Converting time to milliseconds
-    allMillTime = timeFormated[0] * mMulti.hour.value + timeFormated[1] * mMulti.minute.value + timeFormated[2] * mMulti.secound.value
+    allMillTime = timeFormated[0] * mMulti.hour.value + timeFormated[1] * mMulti.minute.value + timeFormated[2] * mMulti.second.value
     return allMillTime
 
 def util_getTomlArrayAsList(value: tk.array):
@@ -162,19 +161,16 @@ class multiprocessingBlocker():
     def __init__(self) -> None:
         self.blockList = list(config['BASE']['blocked_apps'])
         self.blockingProcces = multiprocessing.Process(target=self.blockApps, daemon=True)
-        #logging.info("Multiprocessing blocker is initialized!")
 
     def stopBlockingProcess(self)-> None:
         if self.blockingProcces.is_alive():
             self.blockingProcces.terminate()
-        #logging.warning("Multiprocessing blocker is stopped!")
 
     def updateBlockingProcess(self)-> None:
         self.stopBlockingProcess()
         self.blockList = list(config['BASE']['blocked_apps'])
         self.blockingProcces = multiprocessing.Process(target=self.blockApps)
         self.blockingProcces.start()
-        #logging.warning("Multiprocessing blocker is updated!")
 
     def isBlockingContinuous(self) -> bool: # Check for 'is_continuous option'
         return bool(config['ADVANCED_UPDATE_METHOD']['is_continuous'])
@@ -186,7 +182,7 @@ class multiprocessingBlocker():
                     if proc.name() in self.blockList:
                         proc.kill()
                         continue
-                sleep(int(config['ADVANCED_UPDATE_METHOD']['refresh_rate'] / mMulti.secound.value))
+                sleep(int(config['ADVANCED_UPDATE_METHOD']['refresh_rate'] / mMulti.second.value))
         else:
             while True:
                 for proc in psutil.process_iter(): # Some changes to locate this thingy
@@ -198,7 +194,7 @@ multiprocessing.freeze_support() # Freeze multiprocessing for blocker to prevent
 
 # Custom exception hook
 def snsj_exception_hook(exctype, value, traceback):
-    logging.critical("Exception catched! Displaying...")
+    logging.critical("Exception caught! Displaying...")
     logging.critical(f"{exctype}, {value}, {traceback}")
 
 sys.excepthook = snsj_exception_hook
@@ -233,7 +229,7 @@ class GetProcessesDialog(QtWidgets.QDialog):
         # Adding those buttons
         self.addBBoxButtons()
 
-        # Some thigs for process list
+        # Some things for process list
         self.system_proc_brush = QtGui.QBrush()
         self.system_proc_brush.setStyle(Qt.SolidPattern)
         self.system_proc_brush.setColor(Qt.blue)
@@ -434,10 +430,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Base functions
 
-    def resetSettings(self) -> None: # Defaults everything
-        util_setupDefaultConfig()
-        logging.warning("Reset settings is called! Defaulting everything...")
-
     def loadConfigSettings(self) -> None: # Loads and applies all config settings
         # Converting time nortification time string to QTime for future use
         configTime = util_convertToQTime(config['PREFERENCES_TIME_NOTIF']['notif_time'])
@@ -481,7 +473,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.rbtn_continuousUpdate.setChecked(False)
             self.gbox_adv_refreshRate.setEnabled(True)
         self.slider_refreshRate.setValue(int(config['ADVANCED_UPDATE_METHOD']['refresh_rate']))
-        self.labl_refreshRateText.setText(f'{round(self.slider_refreshRate.value()/mMulti.secound.value, 1)} {self.loc_file["BASE"]["second_long"]}')
+        self.labl_refreshRateText.setText(f'{round(self.slider_refreshRate.value() / mMulti.second.value, 1)} {self.loc_file["BASE"]["second_long"]}')
 
         # ADVANCED_STOP_MODE
         match (int(config['ADVANCED_STOP_MODE']['stop_type'])):
@@ -520,11 +512,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.info_box.warning(self, self.loc_file['WIDGETS']['usertime_warning_title'],
                                       self.loc_file['WIDGETS']['usertime_warning_content'])
                 logging.error("User wrote some gibberish!")
-                return 'Wrong format error'
+                return
             self.updateConfigTime(userTime[0])
             self.fullStopTimer()
         else:
-            return 'Action canceled'
+            return
         logging.warning("User changed timer interval!")
 
     def updateTimerLabel(self) -> None: # Updates timer label
@@ -554,10 +546,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if config['ADVANCED_STOP_MODE']['stop_type'] == 2:
                 passGranted = self.askStopPassword(self.loc_file['WIDGETS']['pass_ask_content_pause'])
                 if not passGranted:
-                    return False
+                    return
 
             if config['ADVANCED_STOP_MODE']['stop_type'] == 1: # Fool protection
-                return False
+                return
 
             remainingTime = self.mainTimer.remainingTime()
             self.mainTimer.stop()
@@ -725,7 +717,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info("Blocker refresh rate is updated")
 
     def updateGUIRefreshRateLabel(self) -> None: # Updates refresh rate label in gui thru config
-        self.labl_refreshRateText.setText(str(round(config['ADVANCED_UPDATE_METHOD']['refresh_rate']/mMulti.secound.value, 1)) + f" {self.loc_file['BASE']['second_long']}")
+        self.labl_refreshRateText.setText(str(round(config['ADVANCED_UPDATE_METHOD']['refresh_rate'] / mMulti.second.value, 1)) + f" {self.loc_file['BASE']['second_long']}")
 
     # Stop password
 
@@ -735,7 +727,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 passGranted = self.askStopPassword(self.loc_file['WIDGETS']['pass_ask_content_old'])
                 if not passGranted:
                     self.info_box.warning(self, self.loc_file['WIDGETS']['wrongpass_warning_title'], self.loc_file['WIDGETS']['wrongpass_warning_content'])
-                    return False
+                    return
             encodedPass = self.ledit_stopPassword.text().encode('utf-8')
             hashedPass = base64.b64encode(encodedPass)
             config['ADVANCED_STOP_MODE']['stop_password'] = str(hashedPass)
