@@ -1,4 +1,4 @@
-# SN_Straitjacket
+<h1 align="center">SN_Straitjacket</h1>
 
 <p align="center">
   <img width="128" height="128" src="https://img.icons8.com/nolan/128/1A6DFF/C822FF/hourglass-sand-top.png" alt="hourglass-sand-top"/>
