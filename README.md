@@ -46,9 +46,7 @@ Written in [Python 3.10](https://www.python.org/) with usage of:
 - [X] Updater
 - [X] Fix notification
 - [X] Support of older configs
-- [ ] TOML to YAML (Config)
 - [ ] Tray functionality?
-- [ ] Config presets
 - [ ] Multi-selection for apps and websites
 
 ---
