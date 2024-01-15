@@ -46,8 +46,6 @@ Written in [Python 3.10](https://www.python.org/) with usage of:
 - [X] Updater
 - [X] Fix notification
 - [X] Support of older configs
-- [ ] Tray functionality?
-- [ ] Multi-selection for apps and websites
 
 ---
 All icons from [icons8](https://icons8.com/)
